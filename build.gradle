@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+allprojects {
+    group='io.aero-framework'
+    version = '1.0.0'
+}
+subprojects {
+   apply plugin: 'java'
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+}
