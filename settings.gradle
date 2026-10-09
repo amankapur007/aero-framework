@@ -1,2 +1,3 @@
 rootProject.name = 'aero-framework'
-include 'annotations'
+include 'aero-annotations'
+include 'aero-core'
