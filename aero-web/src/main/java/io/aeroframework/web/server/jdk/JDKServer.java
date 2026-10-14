@@ -1,6 +1,7 @@
 package io.aeroframework.web.server.jdk;
 
 import com.sun.net.httpserver.HttpServer;
+import io.aeroframework.web.server.HttpRequest;
 import io.aeroframework.web.server.WebServer;
 
 import java.io.IOException;
@@ -16,6 +17,8 @@ public class JDKServer implements WebServer {
         try {
             this.httpServer = HttpServer.create(new InetSocketAddress(port), 0);
             this.httpServer.createContext("/", exchange -> {
+                HttpRequest request = new JDKHttpRequest(exchange);
+                System.out.println(request.getQueryParameters());
                 exchange.sendResponseHeaders(200, 0);
                 String s = "Hello World!";
                 try(OutputStream os = exchange.getResponseBody()){

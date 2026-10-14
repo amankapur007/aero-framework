@@ -9,6 +9,6 @@ public interface HttpRequest {
     String getUri();
     Map<String, List<String>> getHeaders();
     Map<String,String> getPathVariables();
-    Map<String,String> getQueryParameters();
+    Map<String,List<String>> getQueryParameters();
     InputStream getBody();
 }
