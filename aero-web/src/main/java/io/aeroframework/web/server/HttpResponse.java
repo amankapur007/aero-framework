@@ -5,6 +5,8 @@ import java.util.Map;
 
 public interface HttpResponse {
     void setStatus(int status);
-    OutputStream getBody();
+    void setBody(String body);
+    String getBody();
     void setHeader(String name, String value);
+    void commit();
 }
