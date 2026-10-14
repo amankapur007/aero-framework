@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 
 public class JDKServer implements WebServer {
     private HttpServer httpServer;
+
     @Override
     public void start(int port) {
         try {
@@ -30,6 +31,7 @@ public class JDKServer implements WebServer {
             });
             this.httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
             this.httpServer.start();
+            System.out.println("Server started on port " + this.httpServer.getAddress().getPort());
         } catch (IOException e) {
             throw new RuntimeException("Failed to start http server", e);
         }
