@@ -7,4 +7,5 @@ import java.lang.annotation.*;
 @Documented
 public @interface Body {
     String value() default "";
+    boolean required() default true;
 }
