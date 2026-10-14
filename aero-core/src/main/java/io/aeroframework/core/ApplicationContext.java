@@ -6,6 +6,7 @@ import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
 import org.reflections.util.ConfigurationBuilder;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -142,6 +143,22 @@ public class ApplicationContext implements BeanFactory {
     @Override
     public boolean containsBean(String name) {
         return singletonObjects.containsKey(name);
+    }
+
+    @Override
+    public Object getBeansByAnnotation(Class<? extends Annotation> annotation) {
+       List<Object> beans = new ArrayList<>();
+        for (Object bean: singletonObjects.values()) {
+            if (bean.getClass().isAnnotationPresent(annotation)) {
+                beans.add(bean);
+            }
+        }
+        return beans;
+    }
+
+    @Override
+    public Map<String, Object> getAllBeans() {
+        return Collections.unmodifiableMap(singletonObjects);
     }
 
 }

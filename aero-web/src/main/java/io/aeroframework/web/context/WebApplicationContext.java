@@ -31,10 +31,13 @@ public class WebApplicationContext {
     }
 
     private void initController() {
-        Map<String, Object> controllers = applicationContext.getBeans(Controller.class);
+        Map<String, Object> controllers = applicationContext.getAllBeans();
         for (Map.Entry<String, Object> entry : controllers.entrySet()) {
-            handlerMapping.registerController(entry.getValue());
+            if(entry.getValue().getClass().isAnnotationPresent(Controller.class)) {
+                handlerMapping.registerController(entry.getValue());
+            }
         }
+        System.out.println(handlerMapping.getRoutes());
     }
 
     public void start() throws Exception {
