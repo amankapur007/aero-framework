@@ -1,6 +1,7 @@
 package io.aeroframework.web.server.jdk;
 
 import com.sun.net.httpserver.HttpServer;
+import io.aeroframework.web.handler.WebHandler;
 import io.aeroframework.web.server.HttpRequest;
 import io.aeroframework.web.server.HttpResponse;
 import io.aeroframework.web.server.WebServer;
@@ -13,21 +14,24 @@ import java.util.concurrent.Executors;
 
 public class JDKServer implements WebServer {
     private HttpServer httpServer;
+    private WebHandler handler;
+    private int port=0;
+
+    public JDKServer(WebHandler handler, int port) {
+        this.handler = handler;
+        this.port = port;
+    }
 
     @Override
-    public void start(int port) {
+    public void start() {
         try {
             this.httpServer = HttpServer.create(new InetSocketAddress(port), 0);
             this.httpServer.createContext("/", exchange -> {
-                HttpRequest request = new JDKHttpRequest(exchange);
-                HttpResponse response = new JDKHttpResponse(exchange);
-
-                response.setStatus(200);
-                response.setHeader("Content-Type", "application/json");
-                response.setBody("""
-                        {"message":"Hello World!"}"
-                        """);
-                response.commit();
+                HttpRequest httpRequest = new JDKHttpRequest(exchange);
+                HttpResponse httpResponse = new JDKHttpResponse(exchange);
+                handler.handle(httpRequest, httpResponse);
+                httpResponse.commit();
+                exchange.close();
             });
             this.httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
             this.httpServer.start();
@@ -45,5 +49,9 @@ public class JDKServer implements WebServer {
         if(httpServer!=null){
             httpServer.stop(0);
         }
+    }
+
+    public WebHandler getHandler() {
+        return handler;
     }
 }

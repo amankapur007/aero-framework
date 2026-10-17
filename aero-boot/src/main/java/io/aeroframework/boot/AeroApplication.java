@@ -8,7 +8,6 @@ public class AeroApplication {
     public WebApplicationContext run(String packageName) {
         long startTime = System.currentTimeMillis();
         System.out.println("Starting application...");
-
         ApplicationContext app = new ApplicationContext();
         app.run(packageName);
         WebApplicationContext wac = new WebApplicationContext(app);

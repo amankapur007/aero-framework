@@ -17,6 +17,7 @@ public class JDKHttpResponse implements HttpResponse {
     private int status = 200;
     private String body;
     private Map<String , List<String>> headers;
+    boolean isCommitted = false;
 
     public JDKHttpResponse(HttpExchange exchange) {
         this.exchange = exchange;
@@ -36,6 +37,7 @@ public class JDKHttpResponse implements HttpResponse {
     }
 
     public void commit(){
+        if(isCommitted) return;
         for(Map.Entry<String, List<String>> entry : headers.entrySet()) {
             exchange.getResponseHeaders().put(entry.getKey(), entry.getValue());
         }
@@ -53,8 +55,7 @@ public class JDKHttpResponse implements HttpResponse {
             }
 
         }
-
-        this.exchange.close();
+        isCommitted = true;
     }
 
     @Override
