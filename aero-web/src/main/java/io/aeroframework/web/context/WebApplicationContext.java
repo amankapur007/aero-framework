@@ -2,6 +2,7 @@ package io.aeroframework.web.context;
 
 import io.aeroframework.annotations.Controller;
 import io.aeroframework.core.ApplicationContext;
+import io.aeroframework.web.handler.DispatcherHandler;
 import io.aeroframework.web.handler.HandlerMapping;
 import io.aeroframework.web.server.WebServer;
 import io.aeroframework.web.server.jdk.JDKServer;
@@ -13,20 +14,23 @@ public class WebApplicationContext {
     private final ApplicationContext applicationContext;
     private final WebServer webServer;
     private final HandlerMapping handlerMapping;
+
     int port=8080;
 
     public WebApplicationContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
-        this.webServer = new JDKServer();
         this.handlerMapping = new  HandlerMapping();
+        DispatcherHandler handler = new DispatcherHandler(handlerMapping);
+        this.webServer = new JDKServer(handler, port);
         initController();
     }
 
     public WebApplicationContext(ApplicationContext applicationContext, int port) {
         this.applicationContext = applicationContext;
-        this.webServer = new JDKServer();
         this.handlerMapping = new  HandlerMapping();
+        DispatcherHandler handler = new DispatcherHandler(handlerMapping);
         this.port = port;
+        this.webServer = new JDKServer(handler, port);
         initController();
     }
 
@@ -37,10 +41,17 @@ public class WebApplicationContext {
                 handlerMapping.registerController(entry.getValue());
             }
         }
-        System.out.println(handlerMapping.getRoutes());
     }
 
     public void start() throws Exception {
-        webServer.start(port);
+        webServer.start();
+    }
+
+    public void stop() throws Exception {
+        webServer.stop();
+    }
+
+    public int getPort() {
+        return port;
     }
 }

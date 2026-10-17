@@ -3,13 +3,14 @@ package io.aeroframework.example.service;
 import io.aeroframework.annotations.Autowired;
 import io.aeroframework.annotations.Service;
 import io.aeroframework.example.component.EmailSender;
+import io.aeroframework.example.model.Email;
 
 @Service
 public class NotifierService {
     @Autowired
     EmailSender emailSender;
 
-    public String send(String message) {
-        return emailSender.sendEmail(message);
+    public Email send(String email, String message) {
+        return emailSender.sendEmail(email, message);
     }
 }

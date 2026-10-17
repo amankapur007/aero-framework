@@ -1,11 +1,11 @@
 package io.aeroframework.example.component;
 
 import io.aeroframework.annotations.Component;
+import io.aeroframework.example.model.Email;
 
 @Component
 public class EmailSender {
-    public String sendEmail(String msg) {
-        System.out.println("Email sending...");
-        return msg;
+    public Email sendEmail(String email, String msg) {
+        return new  Email(email, msg);
     }
 }

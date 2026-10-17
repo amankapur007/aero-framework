@@ -7,81 +7,74 @@ import io.aeroframework.web.server.HttpRequest;
 import io.aeroframework.web.server.WebServer;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.net.URI;
+import java.util.*;
 
 
 public class JDKHttpRequest implements HttpRequest {
     private final HttpExchange exchange;
-    private final String uri;
-    private final String method;
-    private Map<String, List<String>> headers;
-    private Map<String, String> pathVariables;
-    private Map<String, List<String>> queryParameters;
+    private final Map<String, String> pathVariables = new LinkedHashMap<>();
+    private final Map<String, String> queryParameters = new LinkedHashMap<>();
 
     public JDKHttpRequest(HttpExchange exchange) {
         this.exchange = exchange;
-        this.method = exchange.getRequestMethod();
-        this.uri = exchange.getRequestURI().toString();
-        this.pathVariables = new LinkedHashMap<>();
-        this.queryParameters = new LinkedHashMap<>();
         extractQueryParams(exchange.getRequestURI().getRawQuery());
-        populateHeaders(exchange.getRequestHeaders());
-    }
-
-    private void populateHeaders(Headers requestHeaders) {
-        this.headers = requestHeaders;
     }
 
     private void extractQueryParams(String rawQuery) {
+     if (rawQuery == null) return;
 
-        if (rawQuery == null) return;
-//        System.out.println(rawQuery);
-//        if (rawQuery.contains("?")) {
-        String[] queriesParam = rawQuery.split("&");
-        for (String queryParam : queriesParam) {
-            String[] param = queryParam.split("=");
-            String key = param[0].trim();
-            String value = param[1].trim();
-            if (this.queryParameters.containsKey(key)) {
-                this.queryParameters.get(key).add(value);
-            } else {
-                this.queryParameters.put(key, new ArrayList<>());
-                this.queryParameters.get(key).add(value);
-            }
-//            }
-        }
+     String[] queryParams = rawQuery.split("&");
+     for (String queryParam : queryParams) {
+         int idx = queryParam.indexOf("=");
+         String key = queryParam.substring(0, idx);
+         String value = queryParam.length()>idx+1?queryParam.substring(idx + 1):"";
+         queryParameters.put(key, value);
+     }
+    }
+
+    public HttpExchange getExchange() {
+        return exchange;
     }
 
     @Override
-    public String getMethod() {
-        return this.method;
+    public String getHttpMethod() {
+        return exchange.getRequestMethod();
     }
 
     @Override
-    public String getUri() {
-        return this.uri;
+    public URI getUri() {
+        return exchange.getRequestURI();
     }
 
     @Override
     public Map<String, List<String>> getHeaders() {
-        return this.headers;
+        return Collections.unmodifiableMap(exchange.getRequestHeaders());
     }
 
     @Override
     public Map<String, String> getPathVariables() {
-        return Map.of();
+        return Collections.unmodifiableMap(pathVariables);
     }
 
     @Override
-    public Map<String, List<String>> getQueryParameters() {
-        return queryParameters;
+    public Map<String, String> getQueryParameters() {
+        return Collections.unmodifiableMap(queryParameters);
+    }
+
+    @Override
+    public String getQueryParameter(String name) {
+        return this.queryParameters.get(name);
     }
 
     @Override
     public InputStream getBody() {
-        return null;
+        return exchange.getRequestBody();
     }
+
+    @Override
+    public void setPathVariables(String key, String value) {
+        this.pathVariables.put(key, value);
+    }
+
 }
