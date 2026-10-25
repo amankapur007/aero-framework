@@ -17,7 +17,7 @@ module.exports = async ({ github, context }) => {
     throw new Error("Missing GEMINI_API_KEY in environment.");
   }
 
-  // Cap diff at 40,000 characters to stay well within limits
+  // Cap diff at 40,000 characters to stay within safety boundaries
   const trimmedDiff = diff.slice(0, 40000);
 
   const prompt = [
@@ -34,35 +34,87 @@ module.exports = async ({ github, context }) => {
     "```"
   ].join("\n");
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2
+  async function callGeminiWithBackoff(model, maxRetries = 2) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`Calling ${model} (attempt ${attempt}/${maxRetries})...`);
+
+      try {
+        // Enforce a 45-second timeout so stalled requests fail fast and retry
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2 }
+          })
+        });
+
+        clearTimeout(timeoutId);
+        const data = await response.json();
+
+        if (response.ok) {
+          return { success: true, data };
+        }
+
+        const status = response.status;
+        const isTransient = status === 503 || status === 429 || status === 500;
+        console.warn(`Attempt ${attempt} failed with HTTP ${status}: ${data.error?.message}`);
+
+        if (isTransient && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1500 + Math.floor(Math.random() * 1000);
+          console.log(`Temporary server load. Retrying ${model} in ${Math.round(delay / 1000)}s...`);
+          await sleep(delay);
+          continue;
+        }
+
+        return { success: false, status, error: data.error };
+      } catch (err) {
+        console.warn(`Attempt ${attempt} network/timeout error: ${err.message}`);
+        if (attempt < maxRetries) {
+          await sleep(2000);
+          continue;
+        }
+        return { success: false, status: 408, error: { message: err.message } };
       }
-    })
-  });
+    }
+  }
 
-  const data = await response.json();
+  // Active generation models suggested by the API
+  const candidateModels = ["gemini-3.8-flash","gemini-3.5-flash-lite"];
+  let finalData = null;
+  let lastError = null;
 
-  if (!response.ok) {
-    const errMsg = data.error?.message || `HTTP ${response.status}: ${response.statusText}`;
-    console.error("Gemini API Error:", JSON.stringify(data, null, 2));
+  for (const model of candidateModels) {
+    const result = await callGeminiWithBackoff(model, 2);
+    if (result.success) {
+      finalData = result.data;
+      break;
+    }
+    lastError = result.error;
+    console.warn(`Model ${model} unavailable. Falling back to next available model...`);
+  }
+
+  if (!finalData) {
+    const errMsg = lastError?.message || "All candidate models returned high demand / unavailable.";
     await github.rest.issues.createComment({
       owner: context.repo.owner,
       repo: context.repo.repo,
       issue_number: context.payload.pull_request.number,
-      body: `### 🤖 Gemini Code Review Failed\n\n**API Error**: \`${errMsg}\``
+      body: `### 🤖 Gemini Code Review Skipped\n\n**API Notice**: \`${errMsg}\`\n*Google's API endpoints are currently saturated. Trigger the workflow manually from the PR Actions tab once demand stabilizes.*`
     });
     return;
   }
 
-  const reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  const finishReason = data.candidates?.[0]?.finishReason;
+  const reviewText = finalData.candidates?.[0]?.content?.parts?.[0]?.text;
+  const finishReason = finalData.candidates?.[0]?.finishReason;
   const finalComment = reviewText || `Review could not be completed. Model finish reason: **${finishReason || "UNKNOWN"}**`;
 
   await github.rest.issues.createComment({

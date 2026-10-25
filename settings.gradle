@@ -1,0 +1,6 @@
+rootProject.name = 'aero-framework'
+include 'aero-annotations'
+include 'aero-core'
+include 'aero-web'
+include 'aero-boot'
+include 'aero-example'
