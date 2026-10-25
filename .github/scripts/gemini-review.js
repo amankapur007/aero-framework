@@ -88,7 +88,7 @@ module.exports = async ({ github, context }) => {
   }
 
   // Active generation models suggested by the API
-  const candidateModels = ["gemini-3.8-flash", "gemini-3.1-pro-preview"];
+  const candidateModels = ["gemini-3.8-flash","gemini-3.8-flash-lite"];
   let finalData = null;
   let lastError = null;
 
