@@ -17,13 +17,14 @@ public class ApplicationContext implements BeanFactory {
     private final Map<String, BeanDefination> beanRegistry = new ConcurrentHashMap<>();
     private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>();
 
-    //run
-    public void run(String packageName){
+    // run
+    public void run(String packageName) {
         scan(packageName);
         intializeSingletons();
         injectDependencies();
     }
-    //scan
+
+    // scan
     public void scan(String basePackage) {
         ConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
                 .addScanners(Scanners.TypesAnnotated, Scanners.SubTypes.filterResultsBy(s -> true))
@@ -32,11 +33,11 @@ public class ApplicationContext implements BeanFactory {
 
         Set<Class<?>> classes = reflections.get(Scanners.SubTypes.of(Object.class).asClass());
         for (Class<?> clazz : classes) {
-            if(clazz.isInterface() || clazz.isAnnotation() || Modifier.isAbstract(clazz.getModifiers())){
+            if (clazz.isInterface() || clazz.isAnnotation() || Modifier.isAbstract(clazz.getModifiers())) {
                 continue;
             }
-            if(AnnotationUtils.isComponent(clazz)){
-                if(!singletonObjects.containsKey(clazz.getName())){
+            if (AnnotationUtils.isComponent(clazz)) {
+                if (!singletonObjects.containsKey(clazz.getName())) {
                     String beanName = generateBeanName(clazz);
                     BeanDefination beanDefination = new BeanDefination(beanName, clazz);
                     beanRegistry.put(beanName, beanDefination);
@@ -45,23 +46,23 @@ public class ApplicationContext implements BeanFactory {
         }
     }
 
-    //create bean
+    // create bean
 
-    public void intializeSingletons(){
-        for(BeanDefination beanDefination : beanRegistry.values()){
-            if(beanDefination.isSingleton() && !singletonObjects.containsKey(beanDefination.getBeanName())){
+    public void intializeSingletons() {
+        for (BeanDefination beanDefination : beanRegistry.values()) {
+            if (beanDefination.isSingleton() && !singletonObjects.containsKey(beanDefination.getBeanName())) {
                 createBean(beanDefination);
             }
         }
     }
 
-    public void injectDependencies(){
-        for(Object bean : singletonObjects.values()){
+    public void injectDependencies() {
+        for (Object bean : singletonObjects.values()) {
             Class<?> targetClass = bean.getClass();
-            if(targetClass != Object.class){
-                for(Field field : targetClass.getDeclaredFields()){
+            if (targetClass != Object.class) {
+                for (Field field : targetClass.getDeclaredFields()) {
                     field.setAccessible(true);
-                    if(field.isAnnotationPresent(io.aeroframework.annotations.Autowired.class)){
+                    if (field.isAnnotationPresent(io.aeroframework.annotations.Autowired.class)) {
                         Object dependency = getBean(field.getType());
                         try {
                             field.set(bean, dependency);
@@ -76,11 +77,11 @@ public class ApplicationContext implements BeanFactory {
     }
 
     private void createBean(BeanDefination beanDefination) {
-        try{
+        try {
             Object instance = beanDefination.getBeanType().getDeclaredConstructor().newInstance();
             singletonObjects.put(beanDefination.getBeanName(), instance);
-        }catch (Exception e){
-            throw new RuntimeException("Unable to create bean of type "+ beanDefination.getBeanType());
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to create bean of type " + beanDefination.getBeanType());
         }
     }
 
@@ -89,41 +90,45 @@ public class ApplicationContext implements BeanFactory {
         return Character.toLowerCase(name.charAt(0)) + name.substring(1);
     }
 
-    //inject
+    // inject
 
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getBean(Class<T> requiredType) {
-        List<Object> matchers = new ArrayList<>();
-        for (Object bean: singletonObjects.values()) {
-            if (requiredType.isInstance(bean)){
-                matchers.add(bean);
-            }
+        Objects.requireNonNull(requiredType, "requiredType cannot be null");
 
-            if(matchers.size()>1){
-                throw new IllegalArgumentException("Multiple beans of type " + requiredType.getName() + " found");
+        T matchedBean = null;
+
+        for (Object bean : singletonObjects.values()) {
+            if (requiredType.isInstance(bean)) {
+                if (matchedBean != null) {
+                    throw new IllegalArgumentException("Multiple beans of type " + requiredType.getName() + " found");
+                }
+                matchedBean = requiredType.cast(bean);
             }
         }
 
-        if(matchers.isEmpty()){
+        if (matchedBean == null) {
             throw new NoSuchElementException("No qualifying bean found for type " + requiredType.getName());
         }
-        return (T)matchers.getFirst();
+
+        return matchedBean;
     }
 
     @Override
     public <T> T getBean(String name, Class<?> requiredType) {
-        if(singletonObjects.containsKey(name)){
-            if(requiredType.isInstance(singletonObjects.get(name))){
-                return (T)singletonObjects.get(name);
+        if (singletonObjects.containsKey(name)) {
+            if (requiredType.isInstance(singletonObjects.get(name))) {
+                return (T) singletonObjects.get(name);
             }
         }
-        throw new NoSuchElementException("No qualifying bean found for type " + requiredType.getName()+ " and bean name " + name);
+        throw new NoSuchElementException(
+                "No qualifying bean found for type " + requiredType.getName() + " and bean name " + name);
     }
 
     @Override
     public Object getBean(String name) {
-        if(singletonObjects.containsKey(name)){
+        if (singletonObjects.containsKey(name)) {
             return singletonObjects.get(name);
         }
         throw new NoSuchElementException("No qualifying bean found for bean name " + name);
@@ -131,9 +136,9 @@ public class ApplicationContext implements BeanFactory {
 
     @Override
     public Map<String, Object> getBeans(Class<?> requiredType) {
-        Map<String,Object> beans = new HashMap<>();
-        for (Object bean: singletonObjects.values()) {
-            if (requiredType.isInstance(bean)){
+        Map<String, Object> beans = new HashMap<>();
+        for (Object bean : singletonObjects.values()) {
+            if (requiredType.isInstance(bean)) {
                 beans.put(bean.getClass().getName(), bean);
             }
         }
@@ -147,8 +152,8 @@ public class ApplicationContext implements BeanFactory {
 
     @Override
     public Object getBeansByAnnotation(Class<? extends Annotation> annotation) {
-       List<Object> beans = new ArrayList<>();
-        for (Object bean: singletonObjects.values()) {
+        List<Object> beans = new ArrayList<>();
+        for (Object bean : singletonObjects.values()) {
             if (bean.getClass().isAnnotationPresent(annotation)) {
                 beans.add(bean);
             }
